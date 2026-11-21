@@ -11,7 +11,7 @@ jobs:
         id: z
         run: if ls MuhasebeAsistani-Android*.zip >/dev/null 2>&1; then echo "var=1" >> $GITHUB_OUTPUT; fi
       - if: steps.z.outputs.var == '1'
-        run: for z in MuhasebeAsistani-Android*.zip; do unzip -o "$z" -d proje; done
+        run: for z in $(ls MuhasebeAsistani-Android*.zip | LC_ALL=C sort); do unzip -o "$z" -d proje; done
       - if: steps.z.outputs.var == '1'
         uses: actions/setup-java@v4
         with:
