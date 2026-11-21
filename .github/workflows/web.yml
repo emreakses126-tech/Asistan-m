@@ -23,7 +23,7 @@ jobs:
       - if: steps.z.outputs.var == '1'
         run: |
           mkdir -p site
-          for z in web*.zip; do unzip -o "$z" -d site; done
+          for z in $(ls web*.zip | LC_ALL=C sort); do unzip -o "$z" -d site; done
           if [ -f ayar.js ]; then cp ayar.js site/ayar.js; fi
           ls site
       - if: steps.z.outputs.var == '1'
