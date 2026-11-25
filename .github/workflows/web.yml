@@ -46,4 +46,10 @@ jobs:
           path: site
       - if: steps.z.outputs.var == '1'
         id: yayin
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+      # GitHub bazen paketi hemen bulamıyor: biraz bekleyip bir kez daha dene
+      - if: steps.z.outputs.var == '1' && steps.yayin.outcome == 'failure'
+        run: sleep 25
+      - if: steps.z.outputs.var == '1' && steps.yayin.outcome == 'failure'
         uses: actions/deploy-pages@v5
