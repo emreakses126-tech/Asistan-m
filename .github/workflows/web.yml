@@ -41,9 +41,9 @@ jobs:
       - if: steps.z.outputs.var == '1'
         uses: actions/configure-pages@v5
       - if: steps.z.outputs.var == '1'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: site
       - if: steps.z.outputs.var == '1'
         id: yayin
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
