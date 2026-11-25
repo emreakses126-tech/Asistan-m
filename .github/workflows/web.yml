@@ -17,13 +17,25 @@ jobs:
       url: ${{ steps.yayin.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Zip var mi
+        with:
+          fetch-depth: 0
+      - name: Paketleri bul
         id: z
-        run: if ls web*.zip >/dev/null 2>&1; then echo "var=1" >> $GITHUB_OUTPUT; fi
+        run: |
+          # Depodaki tüm zip'ler (adı ve klasörü ne olursa olsun) içeriğine göre ayrılır, yüklenme sırasına göre açılır.
+          : > liste
+          git -c core.quotepath=off ls-files -z -- '*.zip' | while IFS= read -r -d '' f; do
+            if unzip -Z1 "$f" 2>/dev/null | grep -qx 'index.html'; then
+              t=$(git log --diff-filter=A --format=%ct -1 -- "$f"); echo "${t:-0}	$f" >> liste
+            fi
+          done
+          LC_ALL=C sort -t$'\t' -k1,1n -k2,2 liste > sirali
+          cat sirali
+          if [ -s sirali ]; then echo "var=1" >> $GITHUB_OUTPUT; fi
       - if: steps.z.outputs.var == '1'
         run: |
           mkdir -p site
-          for z in $(ls web*.zip | LC_ALL=C sort); do unzip -o "$z" -d site; done
+          cut -f2- sirali | while IFS= read -r f; do unzip -o -q "$f" -d site; done
           if [ -f ayar.js ]; then cp ayar.js site/ayar.js; fi
           ls site
       - if: steps.z.outputs.var == '1'
