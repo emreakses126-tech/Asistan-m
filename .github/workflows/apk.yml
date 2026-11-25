@@ -7,11 +7,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Zip var mi
+        with:
+          fetch-depth: 0
+      - name: Paketleri bul
         id: z
-        run: if ls MuhasebeAsistani-Android*.zip >/dev/null 2>&1; then echo "var=1" >> $GITHUB_OUTPUT; fi
+        run: |
+          # Depodaki tüm zip'ler (adı ve klasörü ne olursa olsun) içeriğine göre ayrılır, yüklenme sırasına göre açılır.
+          : > liste
+          git -c core.quotepath=off ls-files -z -- '*.zip' | while IFS= read -r -d '' f; do
+            if unzip -Z1 "$f" 2>/dev/null | grep -q '^app/'; then
+              t=$(git log --diff-filter=A --format=%ct -1 -- "$f"); echo "${t:-0}	$f" >> liste
+            fi
+          done
+          LC_ALL=C sort -t$'\t' -k1,1n -k2,2 liste > sirali
+          cat sirali
+          if [ -s sirali ]; then echo "var=1" >> $GITHUB_OUTPUT; fi
       - if: steps.z.outputs.var == '1'
-        run: for z in $(ls MuhasebeAsistani-Android*.zip | LC_ALL=C sort); do unzip -o "$z" -d proje; done
+        run: cut -f2- sirali | while IFS= read -r f; do unzip -o -q "$f" -d proje; done
       - if: steps.z.outputs.var == '1'
         uses: actions/setup-java@v4
         with:
@@ -22,7 +34,20 @@ jobs:
         with:
           gradle-version: '8.11.1'
       - if: steps.z.outputs.var == '1'
-        run: cd proje && gradle assembleDebug --no-daemon --stacktrace
+        name: Gizli imza anahtarini coz
+        env:
+          IMZA_SIFRE: ${{ secrets.IMZA_SIFRE }}
+        run: |
+          if [ -n "$IMZA_SIFRE" ] && [ -f proje/app/imza.keystore.enc ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in proje/app/imza.keystore.enc -out proje/app/imza.keystore -pass env:IMZA_SIFRE
+            echo "Gizli anahtarla imzalanacak."
+          else
+            echo "::warning::IMZA_SIFRE gizli ayari yok: eski (herkese acik) anahtarla imzalaniyor."
+          fi
+      - if: steps.z.outputs.var == '1'
+        env:
+          IMZA_SIFRE: ${{ secrets.IMZA_SIFRE }}
+        run: cd proje && gradle assembleDebug --no-daemon --stacktrace && rm -f app/imza.keystore
       - if: steps.z.outputs.var == '1'
         run: cp proje/app/build/outputs/apk/debug/app-debug.apk MuhasebeAsistani.apk
       - if: steps.z.outputs.var == '1'
